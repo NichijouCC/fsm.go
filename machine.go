@@ -5,8 +5,14 @@ import (
 	"time"
 )
 
+const (
+	ENTER="HFSM_ENTER"
+	ANY="HFSM_ANY"
+)
+
+
 type Machine struct {
-	*State
+	*BaseState
 	context interface{}
 	name string
 	enter *EnterState
@@ -14,8 +20,8 @@ type Machine struct {
 	states map[string]IState
 	current IState
 	parent *Machine
+	OnUpdate func(deltaTime time.Duration)
 }
-
 
 type machineOption struct {
 	parent *Machine
@@ -35,14 +41,16 @@ func NewMachine(name string,context interface{},opts ...func(opt *machineOption)
 		el(opt)
 	}
 	enter:=newEnterState()
+	baseState:= NewBaseState(name)
 	machine:= &Machine{
-		State:   NewBaseState(name),
-		context: context,
-		parent: opt.parent,
-		states: map[string]IState{},
-		enter:enter,
-		current: enter,
+		BaseState:baseState,
+		context:   context,
+		parent:    opt.parent,
+		states:    map[string]IState{},
+		enter:     enter,
+		current:   enter,
 	}
+	baseState.Extend=machine
 	for _,el:=range opt.states{
 		machine.AddState(el)
 	}
@@ -54,12 +62,12 @@ func (m *Machine) GetContext() interface{} {
 	return m.context
 }
 
-func (m *Machine) AddEnterToState(toName string,condition func(context interface{}) bool) {
-	m.enter.AddTransition(toName,condition)
+func (m *Machine) GetEnterState() *EnterState {
+	return m.enter
 }
 
-func (m *Machine) RemoveEnterToState(toName string) {
-	m.enter.RemoveTransition(toName)
+func (m *Machine) GetAnyState() *AnyState {
+	return m.any
 }
 
 func (m *Machine) AddState(state IState)  {
@@ -86,6 +94,14 @@ func (m *Machine) GetCurrent() IState {
 	return m.current
 }
 
+func (m *Machine) CheckBeCurrent(current IState) bool {
+	return m.current==current
+}
+
+func (m *Machine) OnEnter(pre IState)  {
+	m.current=m.enter
+}
+
 func (m *Machine) HasState(state IState) bool {
 	if stat,ok:=m.states[state.GetName()];ok{
 		return stat==state
@@ -110,15 +126,21 @@ func (m *Machine) ChangToState(name string) {
 func (m *Machine) Update(deltaTime time.Duration)  {
 	if m.parent!=nil {
 		//parent hierarchy update
-		m.State.Update(deltaTime)
-		if m.parent.current==m {
+		m.BaseState.Update(deltaTime)
+		if m.parent.CheckBeCurrent(m) {
 			//machine hierarchy any update
 			m.any.Update(deltaTime)
 			m.current.Update(deltaTime)
+			if m.OnUpdate!=nil {
+				m.OnUpdate(deltaTime)
+			}
 		}
 	}else {
 		//machine hierarchy any update
 		m.any.Update(deltaTime)
 		m.current.Update(deltaTime)
+		if m.OnUpdate!=nil {
+			m.OnUpdate(deltaTime)
+		}
 	}
 }

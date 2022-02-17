@@ -1,11 +1,11 @@
 package hfsm
 
 type AnyState struct {
-	*State
+	*BaseState
 }
 
 func NewAnyState() *AnyState {
 	return &AnyState{
-		NewBaseState("any"),
+		NewBaseState(ANY),
 	}
 }

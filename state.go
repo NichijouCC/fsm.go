@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-type State struct {
+type BaseState struct {
+	Extend IExtendState
 	name string
 	machine IStateMachine
 	transitions []*Transition
@@ -13,39 +14,39 @@ type State struct {
 	duration time.Duration
 }
 
-func NewBaseState(name string) *State {
-	return &State{
+func NewBaseState(name string) *BaseState {
+	return &BaseState{
 		name: name,
 		transitions: []*Transition{},
 	}
 }
 
-func (b *State) SetMachine(machine IStateMachine) {
+func (b *BaseState) SetMachine(machine IStateMachine) {
 	b.machine=machine
 }
 
-func (b *State) GetMachine() IStateMachine {
+func (b *BaseState) GetMachine() IStateMachine {
 	return b.machine
 }
 
-func (b *State) GetContext() interface{} {
+func (b *BaseState) GetContext() interface{} {
 	if b.machine==nil {
 		return nil
 	}
 	return b.machine.GetContext()
 }
 
-func (b *State) GetName() string {
+func (b *BaseState) GetName() string {
 	return b.name
 }
 
-func (b *State) AddTransition(toName string,condition func(context interface{}) bool) {
+func (b *BaseState) AddTransitionTo(toName string,condition func(context interface{}) bool) {
 	if b.machine==nil {
 		return
 	}
 	if to,ok:=b.machine.GetState(toName);ok {
 		for _,el:=range b.transitions{
-			if el.To.GetName()==toName {
+			if el.To==to {
 				log.Printf("warn:failed to add Transition, already contain it(%v->%v)",b.GetName(),toName)
 				return
 			}
@@ -56,7 +57,7 @@ func (b *State) AddTransition(toName string,condition func(context interface{}) 
 	}
 }
 
-func (b *State) RemoveTransition(toName string) {
+func (b *BaseState) RemoveTransitionTo(toName string) {
 	for index,el:=range b.transitions{
 		if el.To.GetName()==toName {
 			b.transitions=append(b.transitions[:index], b.transitions[index+1:]...)
@@ -66,7 +67,7 @@ func (b *State) RemoveTransition(toName string) {
 	log.Printf("warn:failed to reomve transition, can't find it(%v->%v)",b.GetName(),toName)
 }
 
-func (b *State) Update(deltaTime time.Duration) {
+func (b *BaseState) Update(deltaTime time.Duration) {
 	for _,el:=range b.transitions{
 		if el.Condition==nil||(el.Condition!=nil&&el.Condition(b.GetContext())) {
 			b.machine.ChangToState(el.To.GetName())
@@ -74,26 +75,26 @@ func (b *State) Update(deltaTime time.Duration) {
 		}
 	}
 	b.duration=time.Now().Sub(b.enterTime)
-	b.OnUpdate(deltaTime)
+	b.Extend.OnUpdate(deltaTime)
 }
 
-func (b *State) Enter(pre IState) {
+func (b *BaseState) Enter(pre IState) {
 	b.enterTime=time.Now()
-	b.OnEnter(pre)
+	b.Extend.OnEnter(pre)
 }
 
-func (b *State) Exit(next IState) {
-	b.OnExit(next)
+func (b *BaseState) Exit(next IState) {
+	b.Extend.OnExit(next)
 }
 
-func (b *State) OnEnter(prev IState) {
-
-}
-
-func (b *State) OnExit(next IState) {
+func (b *BaseState) OnEnter(prev IState) {
 
 }
 
-func (b *State) OnUpdate(deltaTime time.Duration) {
+func (b *BaseState) OnExit(next IState) {
+
+}
+
+func (b *BaseState) OnUpdate(deltaTime time.Duration) {
 
 }

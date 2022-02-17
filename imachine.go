@@ -4,24 +4,32 @@ import "time"
 
 type IStateMachine interface {
 	GetContext() interface{}
-	AddEnterToState(state string,condition func(context interface{})bool)
-	RemoveEnterToState(state string)
 	HasState(state IState) bool
 	GetState(name string) (IState,bool)
-	ChangToState(state string)
+	AddState(state IState)
+	AddStates(states []IState)
+	RemoveState(name string)
+	GetCurrent()IState
+	GetEnterState() *EnterState
+	GetAnyState() *AnyState
+	ChangToState(name string)
 }
 
 type IState interface {
+	IExtendState
 	GetName() string
 	SetMachine(machine IStateMachine)
 	GetMachine() IStateMachine
 	GetContext() interface{}
-	AddTransition(toName string,condition func(context interface{})bool)
-	RemoveTransition(toName string)
-	OnEnter(prev IState)
-	OnUpdate(deltaTime time.Duration)
-	OnExit(next IState)
+	AddTransitionTo(toName string,condition func(context interface{})bool)
+	RemoveTransitionTo(toName string)
 	Enter(pre IState)
 	Update(deltaTime time.Duration)
 	Exit(next IState)
+}
+
+type IExtendState interface {
+	OnEnter(prev IState)
+	OnUpdate(deltaTime time.Duration)
+	OnExit(next IState)
 }

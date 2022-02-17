@@ -1,11 +1,11 @@
 package hfsm
 
 type EnterState struct {
-	*State
+	*BaseState
 }
 
 func newEnterState() *EnterState {
 	return &EnterState{
-		NewBaseState("enter"),
+		NewBaseState(ENTER),
 	}
 }
